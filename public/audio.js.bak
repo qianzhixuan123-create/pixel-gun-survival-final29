@@ -1,0 +1,10 @@
+const settings={music:.45,effects:.65};let phase='lobby',enabled=false;const tracks={};const pool={};
+function clip(name){const a=new Audio('/sounds/'+name+'.mp3?v=117');a.preload='auto';return a;}
+for(const k of ['lobby','game','victory']){tracks[k]=clip(k);tracks[k].loop=k!=='victory';}
+for(const k of ['kill','heal','reload','shot0','shot1','shot2','shot3','shot4'])pool[k]=Array.from({length:4},()=>clip(k));
+function status(s){const e=document.getElementById('audioStatus');if(e)e.textContent=s;}
+function playMusic(){for(const [k,a] of Object.entries(tracks)){if(k!==phase)a.pause();}const a=tracks[phase];if(!a||!enabled)return;a.volume=settings.music;a.play().then(()=>status('声音已开启')).catch(()=>status('点击开启声音重试'));}
+let ctx;function unlock(){enabled=true;try{ctx ||= new (window.AudioContext||window.webkitAudioContext)();ctx.resume().catch(()=>{});}catch{}playMusic();}document.addEventListener('click',()=>{if(!enabled||tracks[phase]?.paused)unlock();});document.addEventListener('keydown',()=>{if(!enabled)unlock();});document.getElementById('enableAudio')?.addEventListener('click',unlock);
+export function audioPhase(p){if(phase===p)return;phase=p;playMusic();}
+export function audioCue(kind,gun=0){if(!enabled)return;if(kind==='shot'&&ctx&&ctx.state==='running'){const o=ctx.createOscillator(),g=ctx.createGain(),t=ctx.currentTime;o.type='triangle';o.frequency.setValueAtTime(440+gun*90,t);o.frequency.exponentialRampToValueAtTime(120,t+.08);g.gain.setValueAtTime(settings.effects*.22,t);g.gain.exponentialRampToValueAtTime(.001,t+.09);o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+.1);return;}const list=pool[kind==='shot'?'shot'+gun:kind];if(!list)return;const a=list.find(x=>x.paused||x.ended)||list[0];a.currentTime=0;a.volume=settings.effects;a.play().catch(()=>{});}
+for(const k of ['music','effects'])document.getElementById(k+'Volume')?.addEventListener('input',e=>{settings[k]=Number(e.target.value)/100;for(const a of Object.values(tracks))a.volume=settings.music;});
